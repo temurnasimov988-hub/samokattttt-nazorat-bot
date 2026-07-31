@@ -1,0 +1,158 @@
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    const PARTS = ["Dashbord", "Kontroller", "IoT", "Motor kaleso", "Tormoz", "Gaz pedal", "Batareyka", "Asosiy sim"];
+    const ERRORS = ["10", "11", "12", "13", "14", "15", "16", "18", "19", "21", "22", "23", "24", "26", "27", "31", "32", "35", "37", "39", "40", "41", "50", "51", "52", "54", "55", "57", "58", "Geo", "Harbit", "Xatolik yo'q"];
+    const COMMENTS = ["Yonmayapti", "O'chib qolgan", "Ishlamayapti", "Razyom", "Zaryad olmaydi", "Singan", "Boshqa"];
+
+    let selectedPart = "";
+    let selectedError = "";
+    let selectedComment = "";
+    let isConfirmed = false;
+
+    function initGrid(containerId, items, isError=false) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        items.forEach(item => {
+            const btn = document.createElement('div');
+            btn.className = 'btn-select';
+            btn.innerText = isError && !isNaN(item) ? item + " xatolik" : item;
+            btn.onclick = function() {
+                container.querySelectorAll('.btn-select').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if(containerId === 'parts_container') selectedPart = item;
+                if(containerId === 'errors_container') selectedError = isError && !isNaN(item) ? item + " xatolik" : item;
+                if(containerId === 'comments_container') selectedComment = item;
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    initGrid('parts_container', PARTS);
+    initGrid('errors_container', ERRORS, true);
+    initGrid('comments_container', COMMENTS);
+
+    // Sahifa yuklanganda ishlash tartibi
+    window.onload = function() {
+        const savedName = localStorage.getItem('mexanik_name');
+        const savedPhone = localStorage.getItem('mexanik_phone');
+        const welcomeBlock = document.getElementById('welcome_block');
+
+        // Agar ilgari ma'lumot saqlangan bo'lsa, tasdiqlash oynasi chiqadi
+        if (savedName && savedPhone) {
+            document.getElementById('name_group').style.display = 'none';
+            document.getElementById('phone_group').style.display = 'none';
+            
+            welcomeBlock.innerHTML = `
+                👤 <b>Profil:</b> ${savedName} (${savedPhone})<br>
+                <small>Ushbu profil sizniki ekanligini tasdiqlaysizmi?</small><br><br>
+                <button onclick="confirmUser()" style="background: #28a745; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-right: 5px;">✅ Ha, bu men</button>
+                <button onclick="resetUser()" style="background: #dc3545; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">✏️ O'zgartirish</button>
+            `;
+            welcomeBlock.style.display = 'block';
+            isConfirmed = false;
+        } else {
+            // BIRINCHI MARTA KIRGAN ODLAR UCHUN: Mutlaqo bo'sh oyna ochiladi
+            document.getElementById('name_group').style.display = 'block';
+            document.getElementById('phone_group').style.display = 'block';
+            document.getElementById('mexanik_name').value = "";
+            document.getElementById('mexanik_phone').value = "";
+            welcomeBlock.style.display = 'none';
+            isConfirmed = true; 
+        }
+    };
+
+    // Ha, bu men tugmasi
+    function confirmUser() {
+        const savedName = localStorage.getItem('mexanik_name');
+        const savedPhone = localStorage.getItem('mexanik_phone');
+        const welcomeBlock = document.getElementById('welcome_block');
+        
+        isConfirmed = true;
+        welcomeBlock.innerHTML = `⚙️ Tizimga kirildi: <b>${savedName}</b> (${savedPhone}) <button onclick="resetUser()" style="margin-left:8px; background:#6c757d; color:white; border:none; padding:2px 6px; border-radius:4px; font-size:11px; cursor:pointer;">O'zgartirish</button>`;
+    }
+
+    // Profilni noldan o'zgartirish va xotirani tozalash
+    function resetUser() {
+        localStorage.removeItem('mexanik_name');
+        localStorage.removeItem('mexanik_phone');
+        
+        document.getElementById('name_group').style.display = 'block';
+        document.getElementById('phone_group').style.display = 'block';
+        document.getElementById('welcome_block').style.display = 'none';
+        
+        document.getElementById('mexanik_name').value = "";
+        document.getElementById('mexanik_phone').value = "";
+        isConfirmed = true;
+    }
+
+    function submitForm() {
+        const savedName = localStorage.getItem('mexanik_name');
+        const savedPhone = localStorage.getItem('mexanik_phone');
+
+        let name = "";
+        let phone = "";
+
+        if (savedName && savedPhone && !isConfirmed) {
+            alert("Iltimos, avval profilingizni tasdiqlang!");
+            return;
+        }
+
+        if (savedName && savedPhone && isConfirmed) {
+            name = savedName;
+            phone = savedPhone;
+        } else {
+            const nameSelect = document.getElementById('mexanik_name');
+            const phoneInput = document.getElementById('mexanik_phone');
+            name = nameSelect ? nameSelect.value : "";
+            phone = phoneInput ? phoneInput.value.trim().replace(/\s+/g, '') : "";
+
+            if (!name) { alert("Iltimos, ismingizni tanlang!"); return; }
+            if (!phone) { alert("Iltimos, telefon raqamingizni kiriting!"); return; }
+            
+            if (!phone.startsWith('+')) {
+                phone = '+' + phone;
+            }
+
+            // Ma'lumot saqlanadi
+            localStorage.setItem('mexanik_name', name);
+            localStorage.setItem('mexanik_phone', phone);
+        }
+
+        const samokatInput = document.getElementById('samokat_num');
+        const samokatNum = samokatInput ? samokatInput.value.trim() : "";
+
+        if (!samokatNum) { alert("Iltimos, samokat raqamini kiriting!"); return; }
+        if (!selectedPart) { alert("Iltimos, qism nomini tanlang!"); return; }
+        if (!selectedError) { alert("Iltimos, xatolik kodini tanlang!"); return; }
+        if (!selectedComment) { alert("Iltimos, izohni tanlang!"); return; }
+
+        const resultData = {
+            ism: name,
+            tel: phone, 
+            samokat_num: samokatNum,
+            qism: selectedPart,
+            xatolik: selectedError,
+            izoh: selectedComment
+        };
+
+        tg.sendData(JSON.stringify(resultData));
+
+        const successBlock = document.getElementById('success_block');
+        if (successBlock) successBlock.style.display = 'block';
+        
+        if (samokatInput) samokatInput.value = "";
+        selectedPart = "";
+        selectedError = "";
+        selectedComment = "";
+        
+        document.querySelectorAll('.btn-select').forEach(b => b.classList.remove('active'));
+        window.scrollTo({top: 0, behavior: 'smooth'});
+
+        setTimeout(() => {
+            if (successBlock) successBlock.style.display = 'none';
+        }, 4000);
+    }
+</script>
